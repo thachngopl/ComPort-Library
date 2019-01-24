@@ -379,7 +379,9 @@ type
     procedure LoadSettings(StoreType: TStoreType; LoadFrom: string);
     procedure Open;
     procedure Close;
-    {$IFNDEF No_Dialogs}procedure ShowSetupDialog;{$ENDIF}
+{$IFNDEF No_Dialogs}
+    procedure ShowSetupDialog;
+{$ENDIF}
     function InputCount: Integer;
     function OutputCount: Integer;
     function Signals: TComSignals;
@@ -398,7 +400,7 @@ type
     function WriteAsync(const Buffer; Count: Integer;  var AsyncPtr: PAsync): Integer;
     function WriteStrAsync(var Str: string; var AsyncPtr: PAsync): Integer;
     function ReadAsync(var Buffer; Count: Integer;   var AsyncPtr: PAsync): Integer;
-    function ReadStrAsync(var Str: Ansistring; Count: Integer;  var AsyncPtr: PAsync): Integer;
+    function ReadStrAsync(var Str: AnsiString; Count: Integer;  var AsyncPtr: PAsync): Integer;
     function WriteUnicodeString(const Str: Unicodestring): Integer;
     function ReadUnicodeString(var Str: UnicodeString; Count: Integer): Integer;
 
@@ -615,8 +617,7 @@ const
 implementation
 
 uses
-  {$IFNDEF No_Dialogs}  CPortSetup, {$ENDIF}
-   Controls, Forms, WinSpool;
+  {$IFNDEF No_Dialogs} CPortSetup, {$ENDIF} Controls, Forms, WinSpool;
 
 var
   // error messages
@@ -647,10 +648,10 @@ const
 function ComErrorsToStr(Errors:TComErrors):String;
   procedure e(msg:String);
   begin
-     if result='' then
+     if result = '' then
         result := msg
      else
-        result := result+','+msg;
+        result := result + ',' + msg;
   end;
 begin
    result := '';
@@ -729,12 +730,12 @@ begin
   inherited Create(false);
   FStopEvent := CreateEvent(nil, True, False, nil);
   FComPort := AComPort;
+
   // set thread priority
   Priority := FComPort.EventThreadPriority;
+
   // select which events are monitored
   SetCommMask(FComPort.Handle, EventsToInt(FComPort.Events));
-  // execute thread
-  //{$IFDEF Unicode}Start;  {$ELSE}  Resume;  {$ENDIF}
 end;
 
 // destroy thread
@@ -786,9 +787,12 @@ end;
 procedure TComThread.DispatchComMsg;
 begin
   case FComPort.SyncMethod of
-    smThreadSync: Synchronize(DoEvents); // call events in main thread
-    smWindowSync: SendEvents; // call events in thread that opened the port
-    smNone:       DoEvents; // call events inside monitoring thread
+    smThreadSync:
+      Synchronize(DoEvents); // call events in main thread
+    smWindowSync:
+      SendEvents; // call events in thread that opened the port
+    smNone:
+      DoEvents; // call events inside monitoring thread
   end;
 end;
 
@@ -1322,7 +1326,7 @@ begin
   if Assigned(FOnException) then
   begin
     if WinError > 0 then //get windows error string
-    try  Win32Check(winerror = 0);  except on E:Exception do WinMessage:=e.message; end;
+    try  Win32Check(winerror = 0);  except on E:Exception do WinMessage := e.message; end;
     FOnException(self,TComExceptions(AnException),ComErrorMessages[AnException],WinError, WinMessage);
   end
     else
@@ -1442,13 +1446,9 @@ begin
     else
     begin
       if (FSyncMethod = smWindowSync) then
-{$IFDEF DELPHI_6_OR_HIGHER}
-  {$WARN SYMBOL_DEPRECATED OFF}
-{$ENDIF}
+{$WARN SYMBOL_DEPRECATED OFF}
         FWindow := AllocateHWnd(WindowMethod);
-{$IFDEF DELPHI_6_OR_HIGHER}
-  {$WARN SYMBOL_DEPRECATED ON}
-{$ENDIF}
+{$WARN SYMBOL_DEPRECATED ON}
       FEventThread := TComThread.Create(Self);
       FThreadCreated := True;
     end;
@@ -1472,13 +1472,9 @@ begin
       FEventThread.Free;
       FThreadCreated := False;
       if FSyncMethod = smWindowSync then
-{$IFDEF DELPHI_6_OR_HIGHER}
-  {$WARN SYMBOL_DEPRECATED OFF}
-{$ENDIF}
+{$WARN SYMBOL_DEPRECATED OFF}
         DeallocateHWnd(FWindow);
-{$IFDEF DELPHI_6_OR_HIGHER}
-  {$WARN SYMBOL_DEPRECATED ON}
-{$ENDIF}
+{$WARN SYMBOL_DEPRECATED ON}
     end;
     // close port
     DestroyHandle;
@@ -1840,23 +1836,27 @@ end;
 
 // perform asynchronous write operation
 function TCustomComPort.WriteStrAsync(var Str: string; var AsyncPtr: PAsync): Integer;
-var sa : Ansistring; var i:integer;
+var
+  sa: AnsiString;
+  i: Integer;
 begin
   if Length(Str) > 0 then
   begin
-    setlength(sa,length(str));
-    {$IFDEF Unicode}
-    if length(sa)>0 then
+    SetLength(sa, Length(str));
+{$IFDEF Unicode}
+    if Length(sa) > 0 then
     begin
-      for i := 1 to length(str) do sa[i] := ansichar(byte(str[i]));
-      move(sa[1],str[1],length(sa));
+      for i := 1 to Length(str) do
+        sa[i] := AnsiChar(Byte(str[i]));
+      move(sa[1], str[1], Length(sa));
     end;
-    {$ENDIF}
+{$ENDIF}
     Result := WriteAsync(Str[1], Length(Str), AsyncPtr)
   end
   else
     Result := 0;
 end;
+
 // perform synchronous write operation
 function TCustomComPort.WriteStr(Str: string): Integer;
 var
@@ -1870,6 +1870,7 @@ begin
     DoneAsync(AsyncPtr);
   end;
 end;
+
 //Pierre Yager - includes codepage converstion of strings being sent
 function TCustomComPort.WriteUnicodeString(const Str: Unicodestring): Integer;
 var
@@ -1891,9 +1892,8 @@ var
 begin
   InitAsync(AsyncPtr);
   try
-    setLength(rb,count);
+    SetLength(rb,count);
     Result := ReadAsync(rb[1], Count, AsyncPtr);  //  ReadStr(s, Count);
-    //{$IFDEF Unicode}rb := UTF8Encode(s);{$ELSE} rb := s;  {$ENDIF}
     l := MultiByteToWideChar(FCodePage, 0, PAnsiChar(rb), Length(rb), nil, 0);
     SetLength(Str, l);
     Result := MultiByteToWideChar(FCodePage, 0, PAnsiChar(rb), Length(rb), PWideChar(Str), l);
@@ -1941,9 +1941,9 @@ begin
 end;
 
 // perform asynchronous read operation
-function TCustomComPort.ReadStrAsync(var Str: Ansistring; Count: Integer; var AsyncPtr: PAsync): Integer;
+function TCustomComPort.ReadStrAsync(var Str: AnsiString; Count: Integer; var AsyncPtr: PAsync): Integer;
 begin
-  setlength(str,count);
+  SetLength(str,count);
   if Count > 0 then
     Result := ReadAsync(str[1], Count, AsyncPtr)
   else
@@ -1954,8 +1954,8 @@ end;
 function TCustomComPort.ReadStr(var Str: string; Count: Integer): Integer;
 var
   AsyncPtr: PAsync;
-  sa :ansistring;
-  i : integer;
+  sa: AnsiString;
+  i: Integer;
 begin
   InitAsync(AsyncPtr);
   try
@@ -1963,12 +1963,13 @@ begin
     Result := WaitForAsync(AsyncPtr);
     SetLength(sa, Result);
     SetLength(str, Result);
-    {$IFDEF Unicode}
-      if length(sa)>0 then
-      for i := 1 to length(sa) do str[i] := char(byte(sa[i]))
-    {$ELSE}
-      str := sa;
-    {$ENDIF}
+{$IFDEF Unicode}
+    if Length(sa) > 0 then
+      for i := 1 to Length(sa) do
+        str[i] := char(Byte(sa[i]))
+{$ELSE}
+    str := sa;
+{$ENDIF}
   finally
     DoneAsync(AsyncPtr);
   end;
@@ -2192,9 +2193,10 @@ end;
 function CharToStr(Ch: Char): string;
 begin
   {$IFDEF Unicode}
-  if CharInSet(ch,[#33..#127]) then
+  if CharInSet(ch, [#33..#127]) then
   {$ELSE}
-  if Ch in [#33..#127] then {$ENDIF}
+  if Ch in [#33..#127] then
+  {$ENDIF}
     Result := Ch
   else
     Result := '#' + IntToStr(Ord(Ch));
@@ -3270,15 +3272,18 @@ end;
 
 procedure TComDataPacket.RxBuf(Sender: TObject; const Buffer; Count: Integer);
 var sa:AnsiString; Str: string;
-      i:integer;
+      i:Integer;
 begin
   SetLength(Str, Count);
   SetLength(Sa, Count);
   Move(Buffer, Sa[1], Count);
   {$IFDEF Unicode}
-  if length(sa)>0 then
-    for i := 1 to length(sa) do str[i] := char(byte(sa[i]));
-  {$ELSE}  str := sa;  {$ENDIF}
+  if Length(sa) > 0 then
+    for i := 1 to Length(sa) do
+      str[i] := Char(Byte(sa[i]));
+  {$ELSE}
+  str := sa;
+  {$ENDIF}
   AddData(Str);
 end;
 
@@ -3468,11 +3473,7 @@ begin
         KeyHandle,
         Index,
         PChar(ValueName),
-        {$IFDEF DELPHI_4_OR_HIGHER}
         Cardinal(ValueLen),
-        {$ELSE}
-        ValueLen,
-          {$ENDIF}
         nil,
         @ValueType,
         PByte(PChar(Data)),
@@ -3634,30 +3635,29 @@ begin
 end;
 
 initialization
-  ComErrorMessages[1]:='Unable to open com port';
-  ComErrorMessages[2]:='WriteFile function failed';
-  ComErrorMessages[3]:='ReadFile function failed';
-  ComErrorMessages[4]:='Invalid Async parameter';
-  ComErrorMessages[5]:='PurgeComm function failed';
-  ComErrorMessages[6]:='Unable to get async status';
-  ComErrorMessages[7]:='SetCommState function failed';
-  ComErrorMessages[8]:='SetCommTimeouts failed';
-  ComErrorMessages[9]:='SetupComm function failed';
-  ComErrorMessages[10]:='ClearCommError function failed';
-  ComErrorMessages[11]:='GetCommModemStatus function failed';
-  ComErrorMessages[12]:='EscapeCommFunction function failed';
-  ComErrorMessages[13]:='TransmitCommChar function failed';
-  ComErrorMessages[14]:='Cannot set property while connected';
-  ComErrorMessages[15]:='EnumPorts function failed';
-  ComErrorMessages[16]:='Failed to store settings';
-  ComErrorMessages[17]:='Failed to load settings';
-  ComErrorMessages[18]:='Link (un)registration failed';
-  ComErrorMessages[19]:='Cannot change led state if ComPort is selected';
-  ComErrorMessages[20]:='Cannot wait for event if event thread is created';
-  ComErrorMessages[21]:='WaitForEvent method failed';
-  ComErrorMessages[22]:='A component is linked to OnRxBuf event';
-  ComErrorMessages[23]:='Registry error';
-  ComErrorMessages[24]:='Port Not Open';//  CError_PortNotOpen
-
+  ComErrorMessages[1] := 'Unable to open com port';
+  ComErrorMessages[2] := 'WriteFile function failed';
+  ComErrorMessages[3] := 'ReadFile function failed';
+  ComErrorMessages[4] := 'Invalid Async parameter';
+  ComErrorMessages[5] := 'PurgeComm function failed';
+  ComErrorMessages[6] := 'Unable to get async status';
+  ComErrorMessages[7] := 'SetCommState function failed';
+  ComErrorMessages[8] := 'SetCommTimeouts failed';
+  ComErrorMessages[9] := 'SetupComm function failed';
+  ComErrorMessages[10] := 'ClearCommError function failed';
+  ComErrorMessages[11] := 'GetCommModemStatus function failed';
+  ComErrorMessages[12] := 'EscapeCommFunction function failed';
+  ComErrorMessages[13] := 'TransmitCommChar function failed';
+  ComErrorMessages[14] := 'Cannot set property while connected';
+  ComErrorMessages[15] := 'EnumPorts function failed';
+  ComErrorMessages[16] := 'Failed to store settings';
+  ComErrorMessages[17] := 'Failed to load settings';
+  ComErrorMessages[18] := 'Link (un)registration failed';
+  ComErrorMessages[19] := 'Cannot change led state if ComPort is selected';
+  ComErrorMessages[20] := 'Cannot wait for event if event thread is created';
+  ComErrorMessages[21] := 'WaitForEvent method failed';
+  ComErrorMessages[22] := 'A component is linked to OnRxBuf event';
+  ComErrorMessages[23] := 'Registry error';
+  ComErrorMessages[24] := 'Port Not Open';//  CError_PortNotOpen
 
 end.
